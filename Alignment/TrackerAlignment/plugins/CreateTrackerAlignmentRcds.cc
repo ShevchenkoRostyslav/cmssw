@@ -78,6 +78,7 @@ private:
 
   // ----------member data ---------------------------
   const bool alignToGlobalTag_;
+  const bool createReferenceRcd_;
   bool firstEvent_;
   Alignments alignments_;
   AlignmentErrorsExtended alignmentErrors_;
@@ -90,6 +91,7 @@ private:
 //
 CreateIdealTkAlRecords::CreateIdealTkAlRecords(const edm::ParameterSet& iConfig) :
   alignToGlobalTag_(iConfig.getUntrackedParameter<bool>("alignToGlobalTag")),
+  createReferenceRcd_(iConfig.getUntrackedParameter<bool>("createReferenceRcd")),
   firstEvent_(true)
 {
 }
@@ -118,7 +120,7 @@ CreateIdealTkAlRecords::analyze(const edm::Event&, const edm::EventSetup& iSetup
                 return a->geographicalId().rawId() < b->geographicalId().rawId();});
 
     for (const auto& det: dets) addAlignmentInfo(*det);
-    if (alignToGlobalTag_) alignToGT(iSetup);
+    if (alignToGlobalTag_ && !createReferenceRcd_) alignToGT(iSetup);
     writeToDB();
     firstEvent_ = false;
   }
@@ -190,26 +192,36 @@ CreateIdealTkAlRecords::addAlignmentInfo(const GeomDet& det)
   const auto& pos = det.position();
   const auto& rot = det.rotation();
   rawIDs_.push_back(detId);
-  const AlignTransform::Translation translation(pos.x(), pos.y(), pos.z());
-  const AlignTransform::Rotation rotation(
-      CLHEP::HepRep3x3(rot.xx(),rot.xy(),rot.xz(),
-                       rot.yx(),rot.yy(),rot.yz(),
-                       rot.zx(),rot.zy(),rot.zz()));
+
+  // TrackerAlignmentRcd entry
+  if (createReferenceRcd_) {
+    alignments_.m_align.emplace_back(AlignTransform(AlignTransform::Translation(),
+						    AlignTransform::Rotation(),
+						    detId));
+  } else {
+    const AlignTransform::Translation translation(pos.x(), pos.y(), pos.z());
+    const AlignTransform::Rotation rotation(
+        CLHEP::HepRep3x3(rot.xx(),rot.xy(),rot.xz(),
+			 rot.yx(),rot.yy(),rot.yz(),
+			 rot.zx(),rot.zy(),rot.zz()));
+    const auto& eulerAngles = rotation.eulerAngles();
+    LogDebug("Alignment")
+      << "============================================================\n"
+      << "subdetector: " << subDetector << "\n"
+      << "detId:       " << detId << "\n"
+      << "------------------------------------------------------------\n"
+      << "     x: " << pos.x() << "\n"
+      << "     y: " << pos.y() << "\n"
+      << "     z: " << pos.z() << "\n"
+      << "   phi: " << eulerAngles.phi() << "\n"
+      << " theta: " << eulerAngles.theta() << "\n"
+      << "   psi: " << eulerAngles.psi() << "\n"
+      << "============================================================\n";
+    alignments_.m_align.emplace_back(AlignTransform(translation, rotation, detId));
+  }
+
+  // TrackerAlignmentErrorExtendedRcd entry
   const AlignTransformError::SymMatrix zeroAPEs(6, 0);
-  const auto& eulerAngles = rotation.eulerAngles();
-  LogDebug("Alignment")
-    << "============================================================\n"
-    << "subdetector: " << subDetector << "\n"
-    << "detId:       " << detId << "\n"
-    << "------------------------------------------------------------\n"
-    << "     x: " << pos.x() << "\n"
-    << "     y: " << pos.y() << "\n"
-    << "     z: " << pos.z() << "\n"
-    << "   phi: " << eulerAngles.phi() << "\n"
-    << " theta: " << eulerAngles.theta() << "\n"
-    << "   psi: " << eulerAngles.psi() << "\n"
-    << "============================================================\n";
-  alignments_.m_align.emplace_back(AlignTransform(translation, rotation, detId));
   alignmentErrors_.m_alignError.emplace_back(AlignTransformErrorExtended(zeroAPEs, detId));
 }
 
@@ -283,6 +295,7 @@ CreateIdealTkAlRecords::fillDescriptions(edm::ConfigurationDescriptions& descrip
                   "from the loaded tracker geometry. "
                   "PoolDBOutputService must be set up for these records.");
   desc.addUntracked<bool>("alignToGlobalTag", false);
+  desc.addUntracked<bool>("createReferenceRcd", false);
   descriptions.add("createIdealTkAlRecords", desc);
 }
 
