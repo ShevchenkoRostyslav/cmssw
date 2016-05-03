@@ -24,7 +24,13 @@ namespace align
 //_____________________________________________________________________________
 TrackerAlignmentLevelBuilder
 ::TrackerAlignmentLevelBuilder(const TrackerTopology* trackerTopology) :
-  trackerTopology_(trackerTopology)
+  trackerTopology_(trackerTopology),
+  pxb_(std::make_shared<align::AlignmentLevels>()),
+  pxe_(std::make_shared<align::AlignmentLevels>()),
+  tib_(std::make_shared<align::AlignmentLevels>()),
+  tid_(std::make_shared<align::AlignmentLevels>()),
+  tob_(std::make_shared<align::AlignmentLevels>()),
+  tec_(std::make_shared<align::AlignmentLevels>())
 {
 }
 
@@ -214,11 +220,6 @@ void TrackerAlignmentLevelBuilder
      << "@SUB=TrackerAlignmentLevelBuilder::buildPXBAlignmentLevels"
      << ss.str();
 
-//  pxb_.push_back(new AlignmentLevel(align::TPBModule,     maxNumModules, false));
-//  pxb_.push_back(new AlignmentLevel(align::TPBLadder,     maxNumLadders, true));
-//  pxb_.push_back(new AlignmentLevel(align::TPBLayer,      maxNumLayers,  false));
-//  pxb_.push_back(new AlignmentLevel(align::TPBHalfBarrel, 2,             false));
-//  pxb_.push_back(new AlignmentLevel(align::TPBBarrel,     1,             false));
   pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBModule,     maxNumModules, false));
   pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBLadder,     maxNumLadders, true));
   pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBLayer,      maxNumLayers,  false));
