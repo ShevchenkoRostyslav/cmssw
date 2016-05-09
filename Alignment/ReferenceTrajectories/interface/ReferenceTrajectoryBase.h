@@ -122,7 +122,8 @@ public:
       useBeamSpot(false),
       hitsAreReverse(false),
       useRefittedState(false),
-      constructTsosWithErrors(false)
+      constructTsosWithErrors(false),
+      allowZeroMaterial(false)
     {}
 
     MaterialEffects materialEffects;
@@ -133,6 +134,7 @@ public:
     bool hitsAreReverse;
     bool useRefittedState;
     bool constructTsosWithErrors;
+    bool allowZeroMaterial;
   };
 
   virtual ~ReferenceTrajectoryBase() {}
