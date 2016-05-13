@@ -11,7 +11,12 @@
      The plugin takes the geometry stored in the global tag and transfers this
      information to the format needed in the TrackerAlignmentRcd. The APEs are
      set to zero for all det IDs of the tracker geometry and put into an
-     TrackerAlignmentErrorExtendedRcd.
+     TrackerAlignmentErrorExtendedRcd. In addition an empty
+     TrackerSurfaceDeformationRcd is created corresponding to ideal surfaces.
+
+     An option exists to align to the content of the used global tag. This is
+     useful, if the geometry record and the tracker alignment records do not
+     match.
 
 */
 //
@@ -42,8 +47,10 @@
 #include "CondFormats/Alignment/interface/AlignmentErrorsExtended.h"
 #include "CondFormats/Alignment/interface/AlignTransformError.h"
 #include "CondFormats/Alignment/interface/AlignTransformErrorExtended.h"
+#include "CondFormats/Alignment/interface/AlignmentSurfaceDeformations.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerAlignmentRcd.h"
 #include "CondFormats/AlignmentRecord/interface/TrackerAlignmentErrorExtendedRcd.h"
+#include "CondFormats/AlignmentRecord/interface/TrackerSurfaceDeformationRcd.h"
 #include "CondFormats/GeometryObjects/interface/PTrackerParameters.h"
 
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
@@ -82,6 +89,7 @@ private:
   bool firstEvent_;
   Alignments alignments_;
   AlignmentErrorsExtended alignmentErrors_;
+  AlignmentSurfaceDeformations alignmentSurfaceDeformations_;
   std::vector<uint32_t> rawIDs_;
 };
 
@@ -160,6 +168,7 @@ CreateIdealTkAlRecords::clearAlignmentInfos()
 {
   alignments_.clear();
   alignmentErrors_.clear();
+  alignmentSurfaceDeformations_ = AlignmentSurfaceDeformations{};
   rawIDs_.clear();
 }
 
@@ -196,14 +205,14 @@ CreateIdealTkAlRecords::addAlignmentInfo(const GeomDet& det)
   // TrackerAlignmentRcd entry
   if (createReferenceRcd_) {
     alignments_.m_align.emplace_back(AlignTransform(AlignTransform::Translation(),
-						    AlignTransform::Rotation(),
-						    detId));
+                                                    AlignTransform::Rotation(),
+                                                    detId));
   } else {
     const AlignTransform::Translation translation(pos.x(), pos.y(), pos.z());
     const AlignTransform::Rotation rotation(
         CLHEP::HepRep3x3(rot.xx(),rot.xy(),rot.xz(),
-			 rot.yx(),rot.yy(),rot.yz(),
-			 rot.zx(),rot.zy(),rot.zz()));
+                         rot.yx(),rot.yy(),rot.yz(),
+                         rot.zx(),rot.zy(),rot.zz()));
     const auto& eulerAngles = rotation.eulerAngles();
     LogDebug("Alignment")
       << "============================================================\n"
@@ -233,19 +242,23 @@ CreateIdealTkAlRecords::alignToGT(const edm::EventSetup& iSetup)
   iSetup.get<TrackerAlignmentRcd>().get(alignments);
   edm::ESHandle<AlignmentErrorsExtended> alignmentErrors;
   iSetup.get<TrackerAlignmentErrorExtendedRcd>().get(alignmentErrors);
+  edm::ESHandle<AlignmentSurfaceDeformations> surfaceDeformations;
+  iSetup.get<TrackerSurfaceDeformationRcd>().get(surfaceDeformations);
+
   if (alignments->m_align.size() != alignmentErrors->m_alignError.size())
     throw cms::Exception("GeometryMismatch")
       << "Size mismatch between alignments (size=" << alignments->m_align.size()
       << ") and alignment errors (size=" << alignmentErrors->m_alignError.size()
       << ")";
 
+  std::vector<uint32_t> commonIDs;
   auto itAlignErr = alignmentErrors->m_alignError.cbegin();
   for (auto itAlign = alignments->m_align.cbegin();
        itAlign != alignments->m_align.cend();
        ++itAlign, ++itAlignErr) {
     const auto id = itAlign->rawId();
     auto found = std::find(rawIDs_.cbegin(), rawIDs_.cend(), id);
-    if (found != rawIDs_.end()) {
+    if (found != rawIDs_.cend()) {
       if (id != itAlignErr->rawId())
         throw cms::Exception("GeometryMismatch")
           << "DetId mismatch between alignments (rawId=" << id
@@ -263,7 +276,30 @@ CreateIdealTkAlRecords::alignToGT(const edm::EventSetup& iSetup)
 
       alignments_.m_align[index] = *itAlign;
       alignmentErrors_.m_alignError[index] = *itAlignErr;
+      commonIDs.push_back(id);
     }
+  }
+
+  // - surface deformations are stored differently
+  //   -> different treatment
+  // - the above payloads contain also entries for ideal modules
+  // - no entry is created for ideal surfaces
+  //   -> size of surface deformation payload does not necessarily match the
+  //      size of the other tracker alignment payload
+  for (const auto& id: commonIDs) {
+    // search for common raw ID in surface deformation items
+    auto item = std::find_if(surfaceDeformations->items().cbegin(),
+                             surfaceDeformations->items().cend(),
+                             [&id](const auto& i) { return i.m_rawId == id; });
+    if (item == surfaceDeformations->items().cend()) continue; // not found
+
+    // copy surface deformation item
+    const auto index = std::distance(surfaceDeformations->items().cbegin(), item);
+    const auto beginEndPair = surfaceDeformations->parameters(index);
+    std::vector<align::Scalar> params(beginEndPair.first, beginEndPair.second);
+    alignmentSurfaceDeformations_.add(item->m_rawId,
+                                      item->m_parametrizationType,
+                                      params);
   }
 }
 
@@ -281,8 +317,10 @@ CreateIdealTkAlRecords::writeToDB()
   edm::LogInfo("Alignment")
     << "Writing ideal tracker-alignment records.";
   poolDb->writeOne<Alignments>(&alignments_, since, "TrackerAlignmentRcd");
-  poolDb->writeOne<AlignmentErrorsExtended>(&alignmentErrors_, since,
-                                            "TrackerAlignmentErrorExtendedRcd");
+  poolDb->writeOne<AlignmentErrorsExtended>
+    (&alignmentErrors_, since, "TrackerAlignmentErrorExtendedRcd");
+  poolDb->writeOne<AlignmentSurfaceDeformations>
+    (&alignmentSurfaceDeformations_, since, "TrackerSurfaceDeformationRcd");
 }
 
 
