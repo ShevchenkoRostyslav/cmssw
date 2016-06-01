@@ -29,7 +29,6 @@ namespace align
   typedef std::vector<Alignable*>   Alignables;
   typedef std::vector<AlignmentParameters*> Parameters;
   typedef std::vector<std::shared_ptr<AlignmentLevel> > AlignmentLevels;
-  typedef std::vector<std::shared_ptr<AlignmentLevels> > vAlignmentLevels;
 
   typedef std::map<std::pair<Alignable*, Alignable*>, AlgebraicMatrix> Correlations;
 

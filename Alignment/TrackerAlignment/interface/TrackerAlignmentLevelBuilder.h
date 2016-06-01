@@ -28,7 +28,7 @@ class TrackerAlignmentLevelBuilder {
     virtual ~TrackerAlignmentLevelBuilder();
 
     void addDetUnitInfo(const DetId& detId);
-    align::vAlignmentLevels build();
+    std::vector<align::AlignmentLevels> build();
 
   //========================= PRIVATE METHODS =================================
   private: //==================================================================
@@ -40,28 +40,17 @@ class TrackerAlignmentLevelBuilder {
     void addTOBDetUnitInfo(const DetId& detId);
     void addTECDetUnitInfo(const DetId& detId);
 
-    void buildPXBAlignmentLevels();
-    void buildPXEAlignmentLevels();
-    void buildTIBAlignmentLevels();
-    void buildTIDAlignmentLevels();
-    void buildTOBAlignmentLevels();
-    void buildTECAlignmentLevels();
+    align::AlignmentLevels buildPXBAlignmentLevels();
+    align::AlignmentLevels buildPXEAlignmentLevels();
+    align::AlignmentLevels buildTIBAlignmentLevels();
+    align::AlignmentLevels buildTIDAlignmentLevels();
+    align::AlignmentLevels buildTOBAlignmentLevels();
+    align::AlignmentLevels buildTECAlignmentLevels();
 
   //========================== PRIVATE DATA ===================================
   //===========================================================================
 
     const TrackerTopology* trackerTopology_;
-
-    // sub-detector alignment levels
-    std::shared_ptr<align::AlignmentLevels> pxb_;
-    std::shared_ptr<align::AlignmentLevels> pxe_;
-    std::shared_ptr<align::AlignmentLevels> tib_;
-    std::shared_ptr<align::AlignmentLevels> tid_;
-    std::shared_ptr<align::AlignmentLevels> tob_;
-    std::shared_ptr<align::AlignmentLevels> tec_;
-
-    // all alignment levels of tracker
-    align::vAlignmentLevels levels_;
 
     // PixelBarrel
     std::set<unsigned int> pxbLayerIDs_;

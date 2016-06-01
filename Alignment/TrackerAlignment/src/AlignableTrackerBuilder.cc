@@ -241,7 +241,7 @@ void AlignableTrackerBuilder
 
   for (const auto & trackerSubLevels : trackerLevels) {
     // first add all levels of the current subdetector to the builder
-    for (const auto & level : *trackerSubLevels) {
+    for (const auto & level : trackerSubLevels) {
       compositeBuilder.addAlignmentLevel(level);
     }
     // now build this tracker-level

@@ -24,13 +24,7 @@ namespace align
 //_____________________________________________________________________________
 TrackerAlignmentLevelBuilder
 ::TrackerAlignmentLevelBuilder(const TrackerTopology* trackerTopology) :
-  trackerTopology_(trackerTopology),
-  pxb_(std::make_shared<align::AlignmentLevels>()),
-  pxe_(std::make_shared<align::AlignmentLevels>()),
-  tib_(std::make_shared<align::AlignmentLevels>()),
-  tid_(std::make_shared<align::AlignmentLevels>()),
-  tob_(std::make_shared<align::AlignmentLevels>()),
-  tec_(std::make_shared<align::AlignmentLevels>())
+  trackerTopology_(trackerTopology)
 {
 }
 
@@ -57,24 +51,19 @@ void TrackerAlignmentLevelBuilder
 }
 
 //_____________________________________________________________________________
-align::vAlignmentLevels TrackerAlignmentLevelBuilder
+std::vector<align::AlignmentLevels> TrackerAlignmentLevelBuilder
 ::build()
 {
-  buildPXBAlignmentLevels();
-  buildPXEAlignmentLevels();
-  buildTIBAlignmentLevels();
-  buildTIDAlignmentLevels();
-  buildTOBAlignmentLevels();
-  buildTECAlignmentLevels();
+	std::vector<align::AlignmentLevels> levels;
+	levels.push_back(buildPXBAlignmentLevels());
+	levels.push_back(buildPXBAlignmentLevels());
+	levels.push_back(buildPXEAlignmentLevels());
+	levels.push_back(buildTIBAlignmentLevels());
+	levels.push_back(buildTIDAlignmentLevels());
+	levels.push_back(buildTOBAlignmentLevels());
+	levels.push_back(buildTECAlignmentLevels());
 
-  levels_.push_back(pxb_);
-  levels_.push_back(pxe_);
-  levels_.push_back(tib_);
-  levels_.push_back(tid_);
-  levels_.push_back(tob_);
-  levels_.push_back(tec_);
-
-  return levels_;
+  return levels;
 }
 
 
@@ -194,7 +183,7 @@ void TrackerAlignmentLevelBuilder
 
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildPXBAlignmentLevels()
 {
   int maxNumModules = pxbModuleIDs_.size();
@@ -220,15 +209,18 @@ void TrackerAlignmentLevelBuilder
      << "@SUB=TrackerAlignmentLevelBuilder::buildPXBAlignmentLevels"
      << ss.str();
 
-  pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBModule,     maxNumModules, false));
-  pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBLadder,     maxNumLadders, true));
-  pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBLayer,      maxNumLayers,  false));
-  pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBHalfBarrel, 2,             false));
-  pxb_->push_back(std::make_shared<AlignmentLevel>(align::TPBBarrel,     1,             false));
+  align::AlignmentLevels pxb;
+  pxb.push_back(std::make_shared<AlignmentLevel>(align::TPBModule,     maxNumModules, false));
+  pxb.push_back(std::make_shared<AlignmentLevel>(align::TPBLadder,     maxNumLadders, true));
+  pxb.push_back(std::make_shared<AlignmentLevel>(align::TPBLayer,      maxNumLayers,  false));
+  pxb.push_back(std::make_shared<AlignmentLevel>(align::TPBHalfBarrel, 2,             false));
+  pxb.push_back(std::make_shared<AlignmentLevel>(align::TPBBarrel,     1,             false));
+
+  return pxb;
 }
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildPXEAlignmentLevels()
 {
   int maxNumModules = pxeModuleIDs_.size();
@@ -253,16 +245,19 @@ void TrackerAlignmentLevelBuilder
      << "@SUB=TrackerAlignmentLevelBuilder::buildPXEAlignmentLevels"
      << ss.str();
 
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEModule,       maxNumModules, false));
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEPanel,        maxNumPanels,  true));
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEBlade,        maxNumBlades,  true));
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEHalfDisk,     maxNumDisks,   false));
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEHalfCylinder, 2,             false));
-  pxe_->push_back(std::make_shared<AlignmentLevel>(align::TPEEndcap,       maxNumSides,   false));
+  align::AlignmentLevels pxe;
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEModule,       maxNumModules, false));
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEPanel,        maxNumPanels,  true));
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEBlade,        maxNumBlades,  true));
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEHalfDisk,     maxNumDisks,   false));
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEHalfCylinder, 2,             false));
+  pxe.push_back(std::make_shared<AlignmentLevel>(align::TPEEndcap,       maxNumSides,   false));
+
+  return pxe;
 }
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildTIBAlignmentLevels()
 {
   int maxNumModules = tibModuleIDs_.size();
@@ -293,17 +288,20 @@ void TrackerAlignmentLevelBuilder
        << "@SUB=TrackerAlignmentLevelBuilder::buildTIBAlignmentLevels"
        << ss.str();
 
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBModule,     maxNumModules, false));
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBString,     maxNumStrings, true));
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBSurface,    2, false)); // 2 surfaces per half shell
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBHalfShell,  2, false)); // 2 half shells per layer
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBLayer,      maxNumLayers, false));
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBHalfBarrel, 2, false));
-  tib_->push_back(std::make_shared<AlignmentLevel>(align::TIBBarrel,     1, false));
+  align::AlignmentLevels tib;
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBModule,     maxNumModules, false));
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBString,     maxNumStrings, true));
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBSurface,    2, false)); // 2 surfaces per half shell
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBHalfShell,  2, false)); // 2 half shells per layer
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBLayer,      maxNumLayers, false));
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBHalfBarrel, 2, false));
+  tib.push_back(std::make_shared<AlignmentLevel>(align::TIBBarrel,     1, false));
+
+  return tib;
 }
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildTIDAlignmentLevels()
 {
   int maxNumModules = tidModuleIDs_.size();
@@ -322,15 +320,18 @@ void TrackerAlignmentLevelBuilder
      << "   max. number of wheels:  " << maxNumWheels                   << "\n"
      << "   max. number of sides:   " << maxNumSides;
 
-  tid_->push_back(std::make_shared<AlignmentLevel>(align::TIDModule, maxNumModules, false));
-  tid_->push_back(std::make_shared<AlignmentLevel>(align::TIDSide,   2,             false)); // 2 sides per ring
-  tid_->push_back(std::make_shared<AlignmentLevel>(align::TIDRing,   maxNumRings,   false));
-  tid_->push_back(std::make_shared<AlignmentLevel>(align::TIDDisk,   maxNumWheels,  false));
-  tid_->push_back(std::make_shared<AlignmentLevel>(align::TIDEndcap, 2,             false)); // 2 endcaps in TID
+  align::AlignmentLevels tid;
+  tid.push_back(std::make_shared<AlignmentLevel>(align::TIDModule, maxNumModules, false));
+  tid.push_back(std::make_shared<AlignmentLevel>(align::TIDSide,   2,             false)); // 2 sides per ring
+  tid.push_back(std::make_shared<AlignmentLevel>(align::TIDRing,   maxNumRings,   false));
+  tid.push_back(std::make_shared<AlignmentLevel>(align::TIDDisk,   maxNumWheels,  false));
+  tid.push_back(std::make_shared<AlignmentLevel>(align::TIDEndcap, 2,             false)); // 2 endcaps in TID
+
+  return tid;
 }
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildTOBAlignmentLevels()
 {
   int maxNumModules = tobModuleIDs_.size();
@@ -347,15 +348,18 @@ void TrackerAlignmentLevelBuilder
      << "   max. number of sides:   " << maxNumSides                    << "\n"
      << "   max. number of layers:  " << maxNumLayers;
 
-  tob_->push_back(std::make_shared<AlignmentLevel>(align::TOBModule,     maxNumModules, false));
-  tob_->push_back(std::make_shared<AlignmentLevel>(align::TOBRod,        maxNumRods,    true));
-  tob_->push_back(std::make_shared<AlignmentLevel>(align::TOBLayer,      maxNumLayers,  false));
-  tob_->push_back(std::make_shared<AlignmentLevel>(align::TOBHalfBarrel, maxNumSides,   false));
-  tob_->push_back(std::make_shared<AlignmentLevel>(align::TOBBarrel,     1,             false));
+  align::AlignmentLevels tob;
+  tob.push_back(std::make_shared<AlignmentLevel>(align::TOBModule,     maxNumModules, false));
+  tob.push_back(std::make_shared<AlignmentLevel>(align::TOBRod,        maxNumRods,    true));
+  tob.push_back(std::make_shared<AlignmentLevel>(align::TOBLayer,      maxNumLayers,  false));
+  tob.push_back(std::make_shared<AlignmentLevel>(align::TOBHalfBarrel, maxNumSides,   false));
+  tob.push_back(std::make_shared<AlignmentLevel>(align::TOBBarrel,     1,             false));
+
+  return tob;
 }
 
 //_____________________________________________________________________________
-void TrackerAlignmentLevelBuilder
+align::AlignmentLevels TrackerAlignmentLevelBuilder
 ::buildTECAlignmentLevels()
 {
   int maxNumModules = tecModuleIDs_.size();
@@ -374,10 +378,14 @@ void TrackerAlignmentLevelBuilder
      << "   max. number of wheels:  " << maxNumDisks                    << "\n"
      << "   max. number of sides:   " << maxNumSides;
 
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECModule, maxNumModules, false));
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECRing,   maxNumRings,   true));
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECPetal,  maxNumPetals,  true));
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECSide,   2,             false)); // 2 sides per disk
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECDisk,   maxNumDisks,   false));
-  tec_->push_back(std::make_shared<AlignmentLevel>(align::TECEndcap, 2,             false));
+  align::AlignmentLevels tec;
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECModule, maxNumModules, false));
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECRing,   maxNumRings,   true));
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECPetal,  maxNumPetals,  true));
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECSide,   2,             false)); // 2 sides per disk
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECDisk,   maxNumDisks,   false));
+  tec.push_back(std::make_shared<AlignmentLevel>(align::TECEndcap, 2,             false));
+
+  return tec;
+
 }
