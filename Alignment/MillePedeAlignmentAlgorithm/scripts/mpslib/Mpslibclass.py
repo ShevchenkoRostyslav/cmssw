@@ -3,7 +3,9 @@
 # @Email:  shevchenko.rostislav@gmail.com
 # @Filename: Mpslibclass.py
 # @Last modified by:   shevchen
-# @Last modified time: 26-Oct-2017
+# @Last modified time: 01-Nov-2017
+
+
 
 # This Jobdatabas-Class interacts with the mps.db file.
 # It's member-variables are often called in the mps_... scripts.
@@ -71,8 +73,8 @@ class Job:
         return copy.deepcopy(self)
 
 
-    def set(self,JOBNUMBER : int,JOBDIR,JOBID,JOBSTATUS,JOBNTRY : int,
-    JOBRUNTIME : int, JOBNEVT : int,JOBHOST,JOBINCR : int,JOBREMARK,
+    def set(self,JOBNUMBER,JOBDIR,JOBID,JOBSTATUS,JOBNTRY,
+    JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, JOBREMARK,
     JOBSP1,JOBSP2,JOBSP3):
         '''Setter.
 
@@ -335,6 +337,14 @@ class jobdatabase:
 
         '''
         self.Jobs.append(job)
+
+
+    # Work around for the OLD global variables #
+    @property
+    def JOBNUMBER(self):
+        for job in self.Jobs:
+            arr.append(job.JOBNUMBER)
+        return arr
 
 '''
     JOBNUMBER, JOBDIR, JOBID, JOBSTATUS, JOBNTRY, JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, \
