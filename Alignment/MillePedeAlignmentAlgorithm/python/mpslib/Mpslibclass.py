@@ -1,14 +1,15 @@
 # This Jobdatabas-Class interacts with the mps.db file.
 # It's member-variables are often called in the mps_... scripts.
 #
-# Meaning of the database variables: (still need to work on these)
+# Meaning of the database variables:
 #
 # (1) Header
 #       header          - version information
 #       batchScript     - base script for serial job
 #       cfgTemplate     - template for cfg file
 #       infiList        - list of input files to be serialized
-#       classInf        - batch class information (might contain two ':'-separated)
+#       classInf        - batch class information
+#                          (might contain two ':'-separated)
 #       addFiles        - job name for submission
 #       driver          - specifies whether merge job is foreseen
 #       nJobs           - number of serial jobs (not including merge job)
@@ -37,144 +38,203 @@
 #       JOBSP3      - possible name as given to mps_setup.pl -N <name> ...
 #       JOBID       - ID of the LSF/HTCondor job
 
+import copy
+
 import datetime
 import time
 import os
 import sys
 
+__version__     = "0.0.1"
+
+class Job:
+
+    def __init__(self, *args = None):
+        '''Default constructor
+
+        '''
+        if args != None and len(args) == 13:
+            self.set(args[0],args[1],args[2],args[3],args[4],args[5],
+            args[6],args[7],args[8],args[9],args[10],args[11],args[12])
+
+    def copy(self):
+        '''Copy constructor.
+
+        '''
+        return copy.deepcopy(self)
+
+
+    def set(self,JOBNUMBER,JOBDIR,JOBID,JOBSTATUS,JOBNTRY,
+    JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, JOBREMARK,
+    JOBSP1,JOBSP2,JOBSP3):
+        '''Setter.
+
+        '''
+        self.JOBNUMBER = JOBNUMBER
+        self.JOBDIR    = JOBDIR
+        self.JOBID     = JOBID
+        self.JOBSTATUS = JOBSTATUS
+        self.JOBNTRY   = JOBNTRY
+        self.JOBRUNTIME= JOBRUNTIME
+        self.JOBNEVT   = JOBNEVT
+        self.JOBHOST   = JOBHOST
+        self.JOBINCR   = JOBINCR
+        self.JOBREMARK = JOBREMARK
+        self.JOBSP1    = JOBSP1
+        self.JOBSP2    = JOBSP2
+        self.JOBSP3    = JOBSP3
+
+
+    def printJob(self):
+        '''print interesting Job-level lists.
+
+        '''
+        merge = self.isMergeJob()
+        print_str = '%6s  %9s  %6s  %3d  %5d  %8d  %8s  %5s  %s' %(
+            self.JOBDIR, self.JOBID, self.JOBSTATUS,
+            self.JOBNTRY, self.JOBRUNTIME, self.JOBNEVT, self.JOBHOST,
+            self.JOBSP2, self.JOBSP3)
+        if not merge:
+            print_str = '%03d  ' % self.JOBNUMBER + print_str
+        else:
+            print_str = 'MMM  ' + print_str
+
+        print print_str
+
+
+    def __str__(self):
+        '''SQL stile string
+
+        '''
+        return '%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n' % (
+    self.JOBDIR, self.JOBID, self.JOBSTATUS,
+    self.JOBNTRY, self.JOBRUNTIME, self.JOBNEVT, self.JOBHOST,
+    self.JOBINCR, self.JOBREMARK, self.JOBSP1, self.JOBSP2, self.JOBSP3
+    )
+
+    def isMergeJob(self):
+        '''Check whether job is the merge job.
+
+        '''
+        if self.JOBDIR.startswith('jobm'):
+            return True
+        else:
+            return False
+
+
 #-------------------------------------------------------------------------------
 class jobdatabase:
 
-    JOBNUMBER, JOBDIR, JOBID, JOBSTATUS, JOBNTRY, JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, \
-    JOBREMARK, JOBSP1, JOBSP2, JOBSP3 = ([] for i in range(13))
+    def read_db(self, db_file_name = "mps.db"):
+        self.fileName = db_file_name
+        DBFILE = self._open_db_file(db_file_name)
+        # get general info from the DB file
+        self.readDBheader(DBFILE)
+        # read the db line-by-line
+        self.readDBContent(DBFILE)
+        DBFILE.close()
 
-    header, batchScript, cfgTemplate, infiList, classInf, addFiles, driver, mergeScript, \
-    mssDir, updateTimeHuman, mssDirPool, spare1, spare2, spare3 = ('' for i in range(14))
-
-    updateTime, elapsedTime, pedeMem , nJobs = -1, -1, -1, -1
-
-    #-------------------------------------------------------------------------------
-    # parses the mps.db file into the member variables and arrays
-    __default_db_file_name = "mps.db"
-    def read_db(self, db_file_name = __default_db_file_name):
+    def _open_db_file(self,db_file_name):
         try:
-            DBFILE = open(db_file_name,'r')
+            my_file = open(db_file_name,'r')
         except IOError as e:
             if e.args != (2, 'No such file or directory'):
                 raise
             else:
-                if db_file_name == jobdatabase.__default_db_file_name:
-                    msg = ("No 'mps.db' found. Make sure you are in a campaign "
-                           "directory and that the campaign is set up.")
-                else:
-                    msg = "Database file '"+db_file_name+"' not found. Exiting."
-                print msg
-                sys.exit(1)
+                msg = "No " + db_file_name + " found. Make sure you are in "
+                "a campaign directory and that the campaign is set up."
+            raise IOError(msg)
+        return my_file
 
-        #read infolines at the top, used rstrip to delete the '\n'
-        self.header          = DBFILE.readline().strip()
-        self.batchScript     = DBFILE.readline().rstrip('\n')
-        self.cfgTemplate     = DBFILE.readline().rstrip('\n')
-        self.infiList        = DBFILE.readline().rstrip('\n')
-        self.classInf        = DBFILE.readline().rstrip('\n')   #formerly named 'class' ->conflict
-        self.addFiles        = DBFILE.readline().rstrip('\n')
-        self.driver          = DBFILE.readline().rstrip('\n')
-        self.mergeScript     = DBFILE.readline().rstrip('\n')
-        self.mssDir          = DBFILE.readline().rstrip('\n')
-        self.updateTime      = int(DBFILE.readline())
-        self.updateTimeHuman = DBFILE.readline().rstrip('\n')
-        self.elapsedTime     = int(DBFILE.readline())
-        self.mssDirPool      = DBFILE.readline().rstrip('\n')
-        self.pedeMem         = int(DBFILE.readline())
-        self.spare1          = DBFILE.readline().rstrip('\n')
-        self.spare2          = DBFILE.readline().rstrip('\n')
-        self.spare3          = DBFILE.readline().rstrip('\n')
+    def readDBheader(self,db_file):
+        '''Read infolines at the top of SQL .db file.
 
-        #read actual jobinfo into arrays
+        Lines are read to the class member vars
+        '''
+        self.header          = db_file.readline().strip()
+        self.batchScript     = db_file.readline().rstrip('\n')
+        self.cfgTemplate     = db_file.readline().rstrip('\n')
+        self.infiList        = db_file.readline().rstrip('\n')
+        self.classInf        = db_file.readline().rstrip('\n')
+        self.addFiles        = db_file.readline().rstrip('\n')
+        self.driver          = db_file.readline().rstrip('\n')
+        self.mergeScript     = db_file.readline().rstrip('\n')
+        self.mssDir          = db_file.readline().rstrip('\n')
+        self.updateTime      = int(db_file.readline())
+        self.updateTimeHuman = db_file.readline().rstrip('\n')
+        self.elapsedTime     = int(db_file.readline())
+        self.mssDirPool      = db_file.readline().rstrip('\n')
+        self.pedeMem         = int(db_file.readline())
+        self.spare1          = db_file.readline().rstrip('\n')
+        self.spare2          = db_file.readline().rstrip('\n')
+        self.spare3          = db_file.readline().rstrip('\n')
+
+    def readDBContent(self,db_file):
+        '''Read a content of the database file and store.
+
+        '''
         self.nJobs = 0
-        milleJobs = 0
+        for line in db_file:
+            line = line.rstrip('\n')
+            line_parts = line.split(':')
+            #set the Job instance
+            j.set(int(parts[0]),parts[1].strip(),parts[2],parts[3].strip(),
+            int(parts[4]),int(part[5]),int(parts[6]),parts[7].strip(),
+            int(parts[8]),parts[9].strip(),parts[10].strip(),parts[11].strip(),
+            parts[12].strip())
+            #increment number of jobs
+            self._incrementNumberOfMilleJobs(j.isMergeJob())
+            # append the job
+            self.Jobs.append(j)
 
-
-        for line in DBFILE:
-            line = line.rstrip('\n')                #removes the pesky \n from line
-            parts = line.split(":")                 #read each line and split into parts list
-            self.JOBNUMBER.append(int(parts[0]))
-            self.JOBDIR.append(parts[1].strip())
-            self.JOBID.append(parts[2])
-            self.JOBSTATUS.append(parts[3].strip())
-            self.JOBNTRY.append(int(parts[4]))
-            self.JOBRUNTIME.append(int(parts[5]))   #int float?
-            self.JOBNEVT.append(int(parts[6]))
-            self.JOBHOST.append(parts[7].strip())
-            self.JOBINCR.append(int(parts[8]))
-            self.JOBREMARK.append(parts[9].strip())
-            self.JOBSP1.append(parts[10].strip())
-            self.JOBSP2.append(parts[11].strip())
-            self.JOBSP3.append(parts[12].strip())
-
-            #count number of jobs
-            if not self.JOBDIR[self.nJobs].startswith("jobm"):
-                milleJobs += 1
+    def _incrementNumberOfMilleJobs(self,merge):
+        if not merge:
             self.nJobs += 1
-        self.nJobs = milleJobs
-
-        DBFILE.close()
 
 
+    def totalEvents(self):
+        '''Total Number of Events in the .db.
 
-    #-------------------------------------------------------------------------------
-    # prints the member varaiables and arrays to the terminal
+        '''
+        return sum(job.JOBNEVT for job in self.Jobs if not job.isMergeJob())
+
+
     def print_memdb(self):
+        '''Print information about the database.
+
+        '''
         #print metainfo
         print "\n=== mps database printout ===\n"
-        print self.header
-        print 'Script:\t\t',    self.batchScript
-        print 'cfg:\t\t',       self.cfgTemplate
-        print 'files:\t\t',     self.infiList
-        print 'class:\t\t',     self.classInf
-        print 'name:\t\t',      self.addFiles
-        print 'driver:\t\t',    self.driver
-        print 'mergeScript:\t', self.mergeScript
-        print 'mssDir:\t\t',    self.mssDir
-        print 'updateTime:\t',  self.updateTimeHuman
-        print 'elapsed:\t',     self.elapsedTime
-        print 'mssDirPool:\t',  self.mssDirPool
-        print 'pedeMem:\t',             self.pedeMem, '\n'
+        print self._header
+        print 'Script:\t\t',    self._batchScript
+        print 'cfg:\t\t',       self._cfgTemplate
+        print 'files:\t\t',     self._infiList
+        print 'class:\t\t',     self._classInf
+        print 'name:\t\t',      self._addFiles
+        print 'driver:\t\t',    self._driver
+        print 'mergeScript:\t', self._mergeScript
+        print 'mssDir:\t\t',    self._mssDir
+        print 'updateTime:\t',  self._updateTimeHuman
+        print 'elapsed:\t',     self._elapsedTime
+        print 'mssDirPool:\t',  self._mssDirPool
+        print 'pedeMem:\t',     self._pedeMem, '\n'
 
-        #print interesting Job-level lists ---- to add: t/evt, fix remarks
-        print '###     dir      jobid    stat  try  rtime      nevt  remark   weight  name'
-        print "------------------------------------------------------------------------------"
-        for i in xrange(self.nJobs):
-            print '%03d  %6s  %9s  %6s  %3d  %5d  %8d  %8s  %5s  %s' % (
-                self.JOBNUMBER[i],
-                self.JOBDIR[i],
-                self.JOBID[i],
-                self.JOBSTATUS[i],
-                self.JOBNTRY[i],
-                self.JOBRUNTIME[i],
-                self.JOBNEVT[i],
-                self.JOBHOST[i],
-                self.JOBSP2[i],
-                self.JOBSP3[i])
-
-        #print merge Jobs if merge mode
-        if self.driver == 'merge':
-            for i in xrange(self.nJobs,len(self.JOBDIR)):
-                print '%s  %6s  %9s  %6s  %3d  %5d  %8d  %8s  %5s  %s' % (
-                    'MMM',
-                    self.JOBDIR[i],
-                    self.JOBID[i],
-                    self.JOBSTATUS[i],
-                    self.JOBNTRY[i],
-                    self.JOBRUNTIME[i],
-                    self.JOBNEVT[i],
-                    self.JOBHOST[i],
-                    self.JOBSP2[i],
-                    self.JOBSP3[i])
+        #print interesting Job-level lists
+        print '###     dir      jobid    stat  try  rtime      nevt  remark   '
+        'weight  name'
+        print "---------------------------------------------------------------'
+        '---------------"
+        for job in self.Jobs:
+            job.printJob()
 
         #print summed info
-        totalEvents = sum(self.JOBNEVT[:self.nJobs])
-        totalCpu    = sum(self.JOBRUNTIME[:self.nJobs])
+        totalEvents = 0
+        totalCpu = 0
+        for job in self.Jobs:
+            if not job.isMergeJob():
+                totalEvents += job.JOBNEVT
+                totalCpu += job.JOBRUNTIME
+
         meanCpuPerEvent = 0.
         if totalEvents > 0:
             meanCpuPerEvent = float(totalCpu)/totalEvents
@@ -184,58 +244,59 @@ class jobdatabase:
         print "\t\t\t\t\tMean CPU/event:\t",meanCpuPerEvent,'s'
 
 
+    def _setNewDBheader(self,new_db):
 
-
-
-    #-------------------------------------------------------------------------------
-    # writes a new mps.db file from the members. Replaces the old mps.db
-    def write_db(self):
-        self.header = "mps database schema 3.2"
-        self.currentTime = int(time.time())
-        self.elapsedTime = 0;
+        new_db.header = "mps database schema 3.2"
+        new_db.currentTime = int(time.time())
+        new_db.elapsedTime = 0;
         if self.updateTime != 0:
-            self.elapsedTime = self.currentTime - self.updateTime
-        self.updateTime = self.currentTime
-        self.updateTimeHuman = str(datetime.datetime.today())   #no timezone :(
-        self.spare1 = "-- unused --"
-        self.spare2 = "-- unused --"
-        self.spare3 = "-- unused --"
+            new_db.elapsedTime = self.currentTime - self.updateTime
+            new_db.updateTime = self.currentTime
+            new_db.updateTimeHuman = str(datetime.datetime.today())
+            new_db.spare1 = "-- unused --"
+            new_db.spare2 = "-- unused --"
+            new_db.spare3 = "-- unused --"
 
-        #if mps.db already exists, backup as mps.db~ (in case of interupt during write)
-        os.system('[[ -a mps.db ]] && cp -p mps.db mps.db~')
 
-        #write mps.db header
-        DBFILE = open ("mps.db", "w")
-        headData = [ self.header, self.batchScript, self.cfgTemplate, self.infiList,
-                     self.classInf, self.addFiles, self.driver, self.mergeScript,
-                     self.mssDir, self.updateTime, self.updateTimeHuman,
-                     self.elapsedTime, self.mssDirPool, self.pedeMem,
-                     self.spare1, self.spare2, self.spare3 ]
+    def writeHeaderData(self,db_file):
+        headData = [self.header, self.batchScript, self.cfgTemplate,
+                    self.infiList, self.classInf, self.addFiles,
+                    self.driver, self.mergeScript, self.mssDir,
+                    self.updateTime, self.updateTimeHuman, self.elapsedTime,
+                    self.mssDirPool, self.pedeMem, self.spare1, self.spare2,
+                    self.spare3 ]
         for item in headData:
-            DBFILE.write("%s\n" % item)
+            db_file.write("%s\n" % item)
 
-        #write mps.db jobinfo
-        for i in xrange(len(self.JOBID)):
-            DBFILE.write('%03d:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n' %
-                         (i+1,
-                          self.JOBDIR[i],
-                          self.JOBID[i],
-                          self.JOBSTATUS[i],
-                          self.JOBNTRY[i],
-                          self.JOBRUNTIME[i],
-                          self.JOBNEVT[i],
-                          self.JOBHOST[i],
-                          self.JOBINCR[i],
-                          self.JOBREMARK[i],
-                          self.JOBSP1[i],
-                          self.JOBSP2[i],
-                          self.JOBSP3[i]))
+
+    def backup(self):
+        '''if file.db already exists, backup as file.db~
+
+        '''
+        os.system('[[ -a ' + self.fileName + ' ]] && cp -p '+ self.fileName + ' ' + self.fileName + '~')
+
+
+    def write_db(self, fileName = 'mps.db'):
+        '''Writes a new mps.db file from the members.
+
+        Old one is replaced
+        '''
+        self._setNewDBheader(new_db)
+        new_db.backup()
+
+        #new file
+        DBFILE = open(fileName,'w')
+        new_db.writeHeaderData(DBFILE)
+        #write jobinfo
+        for i in xrange(len(self.Jobs)):
+            DBFILE.write('%03d:%s\n' % (i+1,self.Jobs[i]))
         DBFILE.close()
 
-    #-------------------------------------------------------------------------------
-    # returns job class as stored in db
-    # one and only argument may be "mille" or "pede" for mille or pede jobs
     def get_class(self, argument=''):
+        '''Returns job class as stored in db.
+
+        one and only argument may be "mille" or "pede" for mille or pede jobs
+        '''
         CLASSES = self.classInf.split(':')
         if len(CLASSES)<1 or len(CLASSES)>2:
             print '\nget_class():\n  class must be of the form \'class\' or \'classMille:classPede\', but is \'%s\'!\n\n', classInf
@@ -250,3 +311,39 @@ class jobdatabase:
         else:
             print '\nget_class():\n  Know class only for \'mille\' or \'pede\', not %s!\n\n' %argument
             sys.exit(1)
+
+
+    def pop(self):
+        '''Method to remove the last Job from the jobdatabase
+
+        '''
+        return self.Jobs.pop()
+
+
+    def append(self, job):
+        '''Append the Job to the jobdatabase
+
+        '''
+        self.Jobs.append(job)
+
+
+    # Work around for the OLD global variables #
+    @property
+    def JOBNUMBER(self):
+        return [job.JOBNUMBER for job in self.Jobs]
+        # TODO!!!
+        # what to do with appends??
+        # return pseudo_list(self,"JOBNUMBER") ->
+        # declare a method: def append(self,value):
+        # this method will
+
+
+'''
+    JOBNUMBER, JOBDIR, JOBID, JOBSTATUS, JOBNTRY, JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, \
+    JOBREMARK, JOBSP1, JOBSP2, JOBSP3 = ([] for i in range(13))
+
+    header, batchScript, cfgTemplate, infiList, classInf, addFiles, driver, mergeScript, \
+    mssDir, updateTimeHuman, mssDirPool, spare1, spare2, spare3 = ('' for i in range(14))
+
+    updateTime, elapsedTime, pedeMem , nJobs = -1, -1, -1, -1
+'''
