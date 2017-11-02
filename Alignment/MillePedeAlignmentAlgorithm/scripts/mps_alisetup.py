@@ -381,7 +381,7 @@ class SetupAlignment(object):
                 lib.read_db()
 
                 # short cut for jobm path
-                jobm_path = os.path.join("jobData", lib.JOBDIR[-1])
+                jobm_path = os.path.join("jobData", lib.Jobs[-1].JOBDIR)
 
                 # delete old merge-config
                 command = ["rm", "-f", os.path.join(jobm_path, "alignment_merge.py")]
