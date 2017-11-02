@@ -49,7 +49,7 @@ __version__     = "0.0.1"
 
 class Job:
 
-    def __init__(self, *args = None):
+    def __init__(self, *args):
         '''Default constructor
 
         '''
@@ -122,7 +122,7 @@ class Job:
             return False
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 class jobdatabase:
 
     def read_db(self, db_file_name = "mps.db"):
@@ -222,8 +222,8 @@ class jobdatabase:
         #print interesting Job-level lists
         print '###     dir      jobid    stat  try  rtime      nevt  remark   '
         'weight  name'
-        print "---------------------------------------------------------------'
-        '---------------"
+        print '---------------------------------------------------------------'
+        '---------------'
         for job in self.Jobs:
             job.printJob()
 
