@@ -1,12 +1,3 @@
-# @Author: Rostyslav Shevchenko <shevchen>
-# @Date:   01-Jan-1970
-# @Email:  shevchenko.rostislav@gmail.com
-# @Filename: Mpslibclass.py
-# @Last modified by:   shevchen
-# @Last modified time: 01-Nov-2017
-
-
-
 # This Jobdatabas-Class interacts with the mps.db file.
 # It's member-variables are often called in the mps_... scripts.
 #
