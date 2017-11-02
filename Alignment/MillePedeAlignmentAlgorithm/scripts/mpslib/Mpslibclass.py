@@ -58,7 +58,7 @@ __version__     = "0.0.1"
 
 class Job:
 
-    def __init__(self,*args = None):
+    def __init__(self, *args = None):
         '''Default constructor
 
         '''
@@ -205,10 +205,7 @@ class jobdatabase:
         '''Total Number of Events in the .db.
 
         '''
-        ntot = 0
-        for job in self.Jobs:
-            if not job.isMergeJob():
-                ntot += job.JOBNEVT
+        return sum(job.JOBNEVT for job in self.Jobs if not job.isMergeJob())
 
 
     def print_memdb(self):
@@ -342,9 +339,13 @@ class jobdatabase:
     # Work around for the OLD global variables #
     @property
     def JOBNUMBER(self):
-        for job in self.Jobs:
-            arr.append(job.JOBNUMBER)
-        return arr
+        return [job.JOBNUMBER for job in self.Jobs]
+        # TODO!!!
+        # what to do with appends??
+        # return pseudo_list(self,"JOBNUMBER") ->
+        # declare a method: def append(self,value):
+        # this method will
+
 
 '''
     JOBNUMBER, JOBDIR, JOBID, JOBSTATUS, JOBNTRY, JOBRUNTIME, JOBNEVT, JOBHOST, JOBINCR, \
